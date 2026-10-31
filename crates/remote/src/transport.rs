@@ -22,6 +22,9 @@ pub mod wsl;
 
 /// Parses the output of `uname -sm` to determine the remote platform.
 /// Takes the last line to skip possible shell initialization output.
+///
+/// illumos and Oracle Solaris both report `SunOS i86pc`, so the probe sends
+/// `uname -o` and `isainfo -k` for them instead (e.g. `illumos amd64`).
 fn parse_platform(output: &str) -> Result<RemotePlatform> {
     let output = output.trim();
     let uname = output.rsplit_once('\n').map_or(output, |(_, last)| last);
@@ -32,6 +35,7 @@ fn parse_platform(output: &str) -> Result<RemotePlatform> {
     let os = match os {
         "Darwin" => RemoteOs::MacOs,
         "Linux" => RemoteOs::Linux,
+        "illumos" => RemoteOs::Illumos,
         _ => anyhow::bail!(
             "Prebuilt remote servers are not yet available for {os:?}. See https://zed.dev/docs/remote-development"
         ),
@@ -44,7 +48,7 @@ fn parse_platform(output: &str) -> Result<RemotePlatform> {
         || arch.starts_with("aarch64")
     {
         RemoteArch::Aarch64
-    } else if arch.starts_with("x86") {
+    } else if arch.starts_with("x86") || arch == "amd64" {
         RemoteArch::X86_64
     } else {
         anyhow::bail!(
@@ -62,7 +66,7 @@ fn parse_platform(output: &str) -> Result<RemotePlatform> {
 pub(crate) fn os_version_command(os: RemoteOs) -> (&'static str, &'static [&'static str]) {
     match os {
         // Matches the `/etc/os-release` parsing in `client::telemetry::os_version`.
-        RemoteOs::Linux => ("cat", &["/etc/os-release"]),
+        RemoteOs::Linux | RemoteOs::Illumos => ("cat", &["/etc/os-release"]),
         RemoteOs::MacOs => ("sw_vers", &["-productVersion"]),
         // Prints e.g. "Microsoft Windows [Version 10.0.19045.5011]".
         RemoteOs::Windows => ("cmd.exe", &["/c", "ver"]),
@@ -82,7 +86,7 @@ pub(crate) fn parse_os_version(os: RemoteOs, output: &str) -> Option<String> {
         return None;
     }
     match os {
-        RemoteOs::Linux => util::parse_os_release(output),
+        RemoteOs::Linux | RemoteOs::Illumos => util::parse_os_release(output),
         RemoteOs::MacOs => {
             // `sw_vers -productVersion` prints a single version line.
             output
@@ -361,6 +365,7 @@ async fn build_remote_server_from_source(
                 },
             RemoteOs::MacOs => "apple-darwin",
             RemoteOs::Windows => "pc-windows-msvc",
+            RemoteOs::Illumos => "unknown-illumos",
         }
     );
     let mut rust_flags = match std::env::var("RUSTFLAGS") {
@@ -599,6 +604,18 @@ mod tests {
 
         assert!(parse_platform("Windows x86_64\n").is_err());
         assert!(parse_platform("Linux armv7l\n").is_err());
+    }
+
+    #[test]
+    fn test_parse_platform_illumos() {
+        let result = parse_platform("illumos amd64\n").unwrap();
+        assert_eq!(result.os, RemoteOs::Illumos);
+        assert_eq!(result.arch, RemoteArch::X86_64);
+        assert_eq!(result.os.as_str(), "illumos");
+
+        assert!(parse_platform("illumos sparcv9\n").is_err());
+        assert!(parse_platform("Solaris amd64\n").is_err());
+        assert!(parse_platform("SunOS i86pc\n").is_err());
     }
 
     #[test]

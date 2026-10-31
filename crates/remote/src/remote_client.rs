@@ -58,6 +58,7 @@ pub enum RemoteOs {
     Linux,
     MacOs,
     Windows,
+    Illumos,
 }
 
 impl RemoteOs {
@@ -66,6 +67,7 @@ impl RemoteOs {
             RemoteOs::Linux => "linux",
             RemoteOs::MacOs => "macos",
             RemoteOs::Windows => "windows",
+            RemoteOs::Illumos => "illumos",
         }
     }
 
@@ -80,6 +82,7 @@ impl RemoteOs {
             RemoteOs::Linux => "Linux",
             RemoteOs::MacOs => "macOS",
             RemoteOs::Windows => "Windows",
+            RemoteOs::Illumos => "illumos",
         }
     }
 }
