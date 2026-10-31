@@ -1325,6 +1325,10 @@ impl OsWatcher {
                     // workloads like grep or language server indexing.
                     let config =
                         notify::Config::default().with_event_kinds(notify::EventKindMask::CORE);
+                    // notify has no illumos backend, so RecommendedWatcher is its
+                    // PollWatcher, whose default interval is 30 seconds.
+                    #[cfg(target_os = "illumos")]
+                    let config = config.with_poll_interval(*POLL_INTERVAL);
                     Box::new(
                         <notify::RecommendedWatcher as notify::Watcher>::new(
                             self.event_sink(),

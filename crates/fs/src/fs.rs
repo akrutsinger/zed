@@ -15,13 +15,13 @@ use gpui::BackgroundExecutor;
 use gpui::Global;
 use gpui::ReadGlobal as _;
 use gpui::SharedString;
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "illumos")))]
 use std::ffi::CString;
 use util::command::{Stdio, new_command};
 
 #[cfg(unix)]
 use std::os::fd::{AsFd, AsRawFd};
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "illumos")))]
 use std::os::unix::ffi::OsStrExt;
 
 #[cfg(unix)]
@@ -503,6 +503,13 @@ impl FileHandle for std::fs::File {
         };
 
         Ok(new_path)
+    }
+
+    #[cfg(target_os = "illumos")]
+    fn current_path(&self, _: &Arc<dyn Fs>) -> Result<PathBuf> {
+        // Tracks renames; reading it fails once the file has been deleted.
+        let fd_path = format!("/proc/self/path/{}", self.as_fd().as_raw_fd());
+        Ok(std::fs::read_link(fd_path)?)
     }
 
     #[cfg(target_os = "freebsd")]
