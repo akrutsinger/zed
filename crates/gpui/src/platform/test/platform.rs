@@ -38,7 +38,7 @@ pub(crate) struct TestPlatform {
     displays_changed_callback: RefCell<Option<Box<dyn FnMut()>>>,
     active_cursor: Mutex<CursorStyle>,
     current_clipboard_item: Mutex<Option<ClipboardItem>>,
-    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+    #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "illumos"))]
     current_primary_item: Mutex<Option<ClipboardItem>>,
     #[cfg(target_os = "macos")]
     current_find_pasteboard_item: Mutex<Option<ClipboardItem>>,
@@ -221,6 +221,7 @@ impl TestPlatform {
                     target_os = "windows" => { crate::OperatingSystem::Windows }
                     target_os = "linux" => { crate::OperatingSystem::Linux }
                     target_os = "freebsd" => { crate::OperatingSystem::FreeBsd }
+                    target_os = "illumos" => { crate::OperatingSystem::Illumos }
                     target_os = "ios" => { crate::OperatingSystem::Ios }
                     target_os = "android" => { crate::OperatingSystem::Android }
                     target_family = "wasm" => {
@@ -236,6 +237,7 @@ impl TestPlatform {
                         target_os = "windows",
                         target_os = "linux",
                         target_os = "freebsd",
+                        target_os = "illumos",
                         target_os = "ios",
                         target_os = "android"
                     ) => { crate::PlatformTarget::Native }
@@ -253,7 +255,7 @@ impl TestPlatform {
             active_window: Default::default(),
             expect_restart: Default::default(),
             current_clipboard_item: Mutex::new(None),
-            #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+            #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "illumos"))]
             current_primary_item: Mutex::new(None),
             #[cfg(target_os = "macos")]
             current_find_pasteboard_item: Mutex::new(None),
@@ -800,12 +802,12 @@ impl Platform for TestPlatform {
         *self.current_clipboard_item.lock() = Some(item);
     }
 
-    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+    #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "illumos"))]
     fn read_from_primary(&self) -> Option<ClipboardItem> {
         self.current_primary_item.lock().clone()
     }
 
-    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+    #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "illumos"))]
     fn write_to_primary(&self, item: ClipboardItem) {
         *self.current_primary_item.lock() = Some(item);
     }

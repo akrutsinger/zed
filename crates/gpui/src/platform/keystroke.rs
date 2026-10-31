@@ -745,7 +745,7 @@ fn display_modifiers(
         f.write_str(match os {
             OperatingSystem::Mac => "⌘",
             OperatingSystem::Windows => "⊞",
-            OperatingSystem::Linux | OperatingSystem::FreeBsd => "❖",
+            OperatingSystem::Linux | OperatingSystem::FreeBsd | OperatingSystem::Illumos => "❖",
             OperatingSystem::Ios | OperatingSystem::Android | OperatingSystem::Unknown => "cmd-",
         })?;
     }
@@ -800,6 +800,7 @@ fn unparse(modifiers: &Modifiers, key: &str, os: OperatingSystem) -> String {
             OperatingSystem::Windows => "win-",
             OperatingSystem::Linux
             | OperatingSystem::FreeBsd
+            | OperatingSystem::Illumos
             | OperatingSystem::Android
             | OperatingSystem::Unknown => "super-",
             OperatingSystem::Mac | OperatingSystem::Ios => "cmd-",

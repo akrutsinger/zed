@@ -5,7 +5,9 @@ use calloop::{
 };
 use gpui_util::ResultExt;
 
-use std::{mem::MaybeUninit, thread, time::Duration};
+#[cfg(not(target_os = "illumos"))]
+use std::mem::MaybeUninit;
+use std::{thread, time::Duration};
 
 use gpui::{
     PlatformDispatcher, Priority, PriorityQueueReceiver, PriorityQueueSender, RunnableVariant,
@@ -141,6 +143,13 @@ impl PlatformDispatcher for LinuxDispatcher {
         }
     }
 
+    // The libc crate has no `pthread_setschedparam` for illumos, and only audio needs it.
+    #[cfg(target_os = "illumos")]
+    fn spawn_realtime(&self, f: Box<dyn FnOnce() + Send>) {
+        std::thread::spawn(f);
+    }
+
+    #[cfg(not(target_os = "illumos"))]
     fn spawn_realtime(&self, f: Box<dyn FnOnce() + Send>) {
         std::thread::spawn(move || {
             // SAFETY: always safe to call

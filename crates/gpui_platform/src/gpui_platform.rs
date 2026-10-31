@@ -68,7 +68,7 @@ pub fn current_platform(headless: bool) -> Rc<dyn Platform> {
                 .expect("failed to initialize Windows platform"),
         ),
         all(
-            any(target_os = "linux", target_os = "freebsd"),
+            any(target_os = "linux", target_os = "freebsd", target_os = "illumos"),
             not(target_env = "ohos")
         ) => gpui_linux::current_platform(headless),
         target_family = "wasm" => {
