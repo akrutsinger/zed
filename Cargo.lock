@@ -15037,6 +15037,7 @@ dependencies = [
  "reqwest_client",
  "rpc",
  "rust-embed",
+ "rustix",
  "semver",
  "serde_json",
  "settings",

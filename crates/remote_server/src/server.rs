@@ -1095,6 +1095,17 @@ pub(crate) fn execute_proxy(
 
 fn kill_running_server(pid: u32, paths: &ServerPaths) -> Result<(), ExecuteProxyError> {
     log::info!("killing existing server with PID {}", pid);
+    // sysinfo has no illumos backend, so the lookup below finds nothing.
+    #[cfg(target_os = "illumos")]
+    if let Some(process_id) = rustix::process::Pid::from_raw(pid as i32)
+        && !matches!(
+            rustix::process::kill_process(process_id, rustix::process::Signal::KILL),
+            Ok(()) | Err(rustix::io::Errno::SRCH)
+        )
+    {
+        return Err(ExecuteProxyError::KillRunningServer { pid });
+    }
+
     let system = sysinfo::System::new_with_specifics(
         sysinfo::RefreshKind::nothing().with_processes(sysinfo::ProcessRefreshKind::nothing()),
     );
@@ -1269,7 +1280,18 @@ fn check_pid_file(path: &Path) -> Result<Option<u32>, CheckPidError> {
         sysinfo::RefreshKind::nothing().with_processes(sysinfo::ProcessRefreshKind::nothing()),
     );
 
-    if system.process(sysinfo::Pid::from_u32(pid)).is_some() {
+    let process_exists = system.process(sysinfo::Pid::from_u32(pid)).is_some();
+    // sysinfo has no illumos backend, so the lookup above finds nothing.
+    #[cfg(target_os = "illumos")]
+    let process_exists = process_exists
+        || rustix::process::Pid::from_raw(pid as i32).is_some_and(|process_id| {
+            matches!(
+                rustix::process::test_kill_process(process_id),
+                Ok(()) | Err(rustix::io::Errno::PERM)
+            )
+        });
+
+    if process_exists {
         log::debug!(
             "Process with PID {} exists. NOT spawning new server, but attaching to existing one.",
             pid
@@ -1464,6 +1486,11 @@ fn is_new_version(version: &str) -> bool {
 }
 
 fn is_file_in_use(file_name: &OsStr) -> bool {
+    // sysinfo has no illumos backend, so every binary would look unused, even this one.
+    if cfg!(target_os = "illumos") {
+        return true;
+    }
+
     let info = sysinfo::System::new_with_specifics(sysinfo::RefreshKind::nothing().with_processes(
         sysinfo::ProcessRefreshKind::nothing().with_exe(sysinfo::UpdateKind::Always),
     ));
@@ -1483,6 +1510,38 @@ fn is_file_in_use(file_name: &OsStr) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "illumos")]
+    #[test]
+    fn current_executable_counts_as_in_use() {
+        let executable = std::env::current_exe().expect("find current executable");
+        let file_name = executable.file_name().expect("executable has a file name");
+        assert!(is_file_in_use(file_name));
+    }
+
+    #[cfg(target_os = "illumos")]
+    #[test]
+    fn pid_file_of_a_running_process_is_kept() {
+        let temp_dir = tempfile::tempdir().expect("create pid directory");
+        let pid_file = temp_dir.path().join("server.pid");
+        let pid = std::process::id();
+        std::fs::write(&pid_file, pid.to_string()).expect("write pid file");
+
+        assert_eq!(check_pid_file(&pid_file).ok().flatten(), Some(pid));
+        assert!(pid_file.exists());
+    }
+
+    #[cfg(target_os = "illumos")]
+    #[test]
+    fn pid_file_of_a_missing_process_is_removed() {
+        let temp_dir = tempfile::tempdir().expect("create pid directory");
+        let pid_file = temp_dir.path().join("server.pid");
+        // Above illumos's PID limit, so it can't name a real process.
+        std::fs::write(&pid_file, i32::MAX.to_string()).expect("write pid file");
+
+        assert_eq!(check_pid_file(&pid_file).ok().flatten(), None);
+        assert!(!pid_file.exists());
+    }
 
     #[cfg(unix)]
     mod unix {
