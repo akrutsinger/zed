@@ -1406,6 +1406,10 @@ impl HeadlessProject {
             });
         }
 
+        // sysinfo has no illumos backend, so the loop above finds nothing.
+        #[cfg(target_os = "illumos")]
+        processes.extend(illumos_processes());
+
         processes.sort_by_key(|p| p.name.clone());
 
         Ok(proto::GetProcessesResponse { processes })
@@ -1534,4 +1538,39 @@ fn find_venv_python(working_directory: &str) -> Option<std::path::PathBuf> {
         }
     }
     None
+}
+
+#[cfg(target_os = "illumos")]
+fn illumos_processes() -> Vec<proto::ProcessInfo> {
+    let Ok(entries) = std::fs::read_dir("/proc") else {
+        return Vec::new();
+    };
+    entries
+        .flatten()
+        .filter_map(|entry| {
+            let pid = entry.file_name().to_str()?.parse().ok()?;
+            let command_line = std::fs::read(entry.path().join("cmdline")).ok()?;
+            let command: Vec<String> = command_line
+                .split(|byte| *byte == 0)
+                .filter(|argument| !argument.is_empty())
+                .map(|argument| String::from_utf8_lossy(argument).into_owned())
+                .collect();
+            let name = Path::new(command.first()?)
+                .file_name()?
+                .to_string_lossy()
+                .into_owned();
+            Some(proto::ProcessInfo { pid, name, command })
+        })
+        .collect()
+}
+
+#[cfg(all(test, target_os = "illumos"))]
+#[test]
+fn illumos_processes_include_the_current_process() {
+    let pid = std::process::id();
+    assert!(
+        illumos_processes()
+            .iter()
+            .any(|process| process.pid == pid && !process.name.is_empty())
+    );
 }
