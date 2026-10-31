@@ -24,6 +24,8 @@ pub enum OperatingSystem {
     Linux,
     /// FreeBSD.
     FreeBsd,
+    /// illumos.
+    Illumos,
     /// iOS and iPadOS.
     Ios,
     /// Android.

@@ -567,6 +567,8 @@ impl Platform for LinuxPlatform {
         gpui::PlatformInfo {
             os: if cfg!(target_os = "freebsd") {
                 gpui::OperatingSystem::FreeBsd
+            } else if cfg!(target_os = "illumos") {
+                gpui::OperatingSystem::Illumos
             } else {
                 gpui::OperatingSystem::Linux
             },

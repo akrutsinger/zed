@@ -34,7 +34,9 @@ impl KeyContext {
             "os",
             match os {
                 crate::OperatingSystem::Mac => "macos",
-                crate::OperatingSystem::Linux | crate::OperatingSystem::FreeBsd => "linux",
+                crate::OperatingSystem::Linux
+                | crate::OperatingSystem::FreeBsd
+                | crate::OperatingSystem::Illumos => "linux",
                 crate::OperatingSystem::Windows => "windows",
                 crate::OperatingSystem::Ios => "ios",
                 crate::OperatingSystem::Android => "android",

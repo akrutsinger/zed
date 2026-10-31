@@ -45,7 +45,7 @@ use crate::{
     ShapedRun, SharedString, Size, SvgRenderer, SystemWindowTab, Task, Window, WindowControlArea,
     hash, point, px, size,
 };
-#[cfg(any(target_os = "linux", target_os = "freebsd"))]
+#[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "illumos"))]
 use anyhow::bail;
 use anyhow::{Context as _, Result};
 use async_task::Runnable;
@@ -346,7 +346,7 @@ impl GraphicalEnvironment {
     }
 }
 
-#[cfg(any(target_os = "linux", target_os = "freebsd"))]
+#[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "illumos"))]
 bitflags::bitflags! {
     /// The windowing modes a platform may start in or switch to.
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -598,9 +598,9 @@ pub trait Platform: 'static {
         Task::ready(Ok(self.read_from_clipboard()))
     }
 
-    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+    #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "illumos"))]
     fn read_from_primary(&self) -> Option<ClipboardItem>;
-    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+    #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "illumos"))]
     fn write_to_primary(&self, item: ClipboardItem);
 
     #[cfg(target_os = "macos")]
@@ -891,7 +891,7 @@ impl WindowButton {
         }
     }
 
-    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
+    #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "illumos"))]
     fn index(&self) -> usize {
         match self {
             WindowButton::Minimize => 0,
@@ -916,7 +916,7 @@ pub struct WindowButtonLayout {
     pub right: [Option<WindowButton>; MAX_BUTTONS_PER_SIDE],
 }
 
-#[cfg(any(target_os = "linux", target_os = "freebsd"))]
+#[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "illumos"))]
 impl WindowButtonLayout {
     /// Returns Zed's built-in fallback button layout for Linux titlebars.
     pub fn linux_default() -> Self {

@@ -52,7 +52,7 @@ screen-capture = [
 ]
 
 
-[target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dependencies]
+[target.'cfg(any(target_os = "linux", target_os = "freebsd", target_os = "illumos"))'.dependencies]
 accesskit.workspace = true
 accesskit_unix = { workspace = true, optional = true }
 anyhow.workspace = true
@@ -129,7 +129,7 @@ xim = { git = "https://github.com/zed-industries/xim-rs.git", rev = "16f35a2c881
     "x11rb-client",
 ], package = "zed-xim", version = "0.4.0-zed", optional = true }
 
-[target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dev-dependencies]
+[target.'cfg(any(target_os = "linux", target_os = "freebsd", target_os = "illumos"))'.dev-dependencies]
 gpui = { workspace = true, features = ["test-support"] }
 
 [package.metadata.cargo-shear]
