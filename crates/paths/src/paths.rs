@@ -149,7 +149,11 @@ pub fn data_dir() -> &'static PathBuf {
             home_dir()
                 .join("Library/Application Support")
                 .join(APP_NAME)
-        } else if cfg!(any(target_os = "linux", target_os = "freebsd")) {
+        } else if cfg!(any(
+            target_os = "linux",
+            target_os = "freebsd",
+            target_os = "illumos"
+        )) {
             if let Ok(flatpak_xdg_data) = std::env::var("FLATPAK_XDG_DATA_HOME") {
                 flatpak_xdg_data.into()
             } else {
@@ -173,7 +177,11 @@ pub fn state_dir() -> &'static PathBuf {
             return home_dir().join(".local").join("state").join(APP_NAME);
         }
 
-        if cfg!(any(target_os = "linux", target_os = "freebsd")) {
+        if cfg!(any(
+            target_os = "linux",
+            target_os = "freebsd",
+            target_os = "illumos"
+        )) {
             return if let Ok(flatpak_xdg_state) = std::env::var("FLATPAK_XDG_STATE_HOME") {
                 flatpak_xdg_state.into()
             } else {
