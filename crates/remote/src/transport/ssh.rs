@@ -181,6 +181,14 @@ struct SshSocket {
     _proxy: askpass::PasswordProxy,
 }
 
+fn ensure_server_is_published(os: RemoteOs, server_path: &str) -> Result<()> {
+    anyhow::ensure!(
+        os != RemoteOs::Illumos,
+        "Zed does not publish a remote server for illumos. Build it on this host and place it at ~/{server_path}. See https://zed.dev/docs/remote-development#illumos",
+    );
+    Ok(())
+}
+
 struct RemoteEnvironment {
     shell: String,
     platform: RemotePlatform,
@@ -191,10 +199,13 @@ impl RemoteEnvironment {
     fn posix_script() -> String {
         r#"
             platform=$(uname -sm) || exit;
+            case "$platform" in
+                "SunOS "*) os=$(uname -o) && arch=$(isainfo -k) && platform="$os $arch";;
+            esac;
             printf "\000%s\000%s\000" "$SHELL" "$platform";
             status=0;
             case "$platform" in
-                "Linux "*) cat /etc/os-release || status=$?;;
+                "Linux "* | "illumos "*) cat /etc/os-release || status=$?;;
                 "Darwin "*) sw_vers -productVersion || status=$?;;
             esac;
             printf "\000%s" "$status";
@@ -1077,6 +1088,8 @@ impl SshRemoteConnection {
         if binary_exists_on_server {
             return Ok(dst_path.into());
         }
+
+        ensure_server_is_published(self.ssh_platform.os, &dst_path.display(self.path_style()))?;
 
         let wanted_version = cx.update(|cx| match release_channel {
             ReleaseChannel::Nightly => Ok(None),
@@ -2618,6 +2631,46 @@ mod tests {
         let environment = RemoteEnvironment::parse_posix(std::str::from_utf8(&output.stdout)?)?;
         assert_eq!(environment.os_version, None);
         Ok(())
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn posix_probe_tells_illumos_from_solaris() -> Result<()> {
+        fn probe(uname_o: &str, isainfo: &str) -> Result<RemoteEnvironment> {
+            let script = format!(
+                r#"uname() {{ case "$1" in -sm) echo "SunOS i86pc";; -o) {uname_o};; esac; }};
+                isainfo() {{ {isainfo}; }};
+                cat() {{ printf 'ID=omnios\nVERSION_ID=r151058q\n'; }};
+                {}"#,
+                RemoteEnvironment::posix_script()
+            );
+            let output = smol::block_on(
+                util::command::new_command("/bin/sh")
+                    .args(["-e", "-c", &script])
+                    .output(),
+            )?;
+            RemoteEnvironment::parse_posix(std::str::from_utf8(&output.stdout)?)
+        }
+
+        let environment = probe("echo illumos", "echo amd64")?;
+        assert_eq!(environment.platform.os, RemoteOs::Illumos);
+        assert_eq!(environment.platform.arch, RemoteArch::X86_64);
+        assert_eq!(environment.os_version.as_deref(), Some("omnios r151058q"));
+
+        assert!(probe("echo Solaris", "echo amd64").is_err());
+        assert!(probe("echo illumos", "return 127").is_err());
+        assert!(probe("return 1", "echo amd64").is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn missing_illumos_server_names_the_path_to_create() {
+        assert!(ensure_server_is_published(RemoteOs::Linux, "server").is_ok());
+
+        let error = ensure_server_is_published(RemoteOs::Illumos, ".zed_server/server")
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("~/.zed_server/server"), "{error}");
     }
 
     #[test]

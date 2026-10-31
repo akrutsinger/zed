@@ -38,6 +38,19 @@ The remote machine must be able to run Zed's server. The following platforms sho
 - macOS 12.0 (Monterey) or later (Intel or Apple Silicon)
 - Linux (x86_64 or arm64, we do not yet support 32-bit platforms)
 - Windows (x86_64 or arm64)
+- illumos (x86_64), with a server you [build yourself](#illumos)
+
+### illumos
+
+Zed does not publish a remote server for illumos. Build it on the host from the source of the Zed version you are running, then copy it to the path shown in the connection error:
+
+```sh
+PATH=/usr/gnu/bin:/opt/ooce/bin:$PATH cargo build --release --package remote_server
+```
+
+Building needs GCC, Clang, CMake, `protoc`, `pkg-config` and the GNU userland. The server needs `libgcc_s` at runtime.
+
+Zed can't download Node.js or language servers for illumos, so install them on the host's `PATH`. File changes are detected by polling, which `ZED_FILE_WATCHER_POLL_MS` adjusts (2000 by default). Old servers in `~/.zed_server` are not removed automatically, and no crash reports are collected.
 
 ## Configuration
 
