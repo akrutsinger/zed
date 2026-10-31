@@ -1,3 +1,8 @@
+#![cfg_attr(
+    target_os = "illumos",
+    allow(unused, reason = "`Sandbox::wrap` always fails without a backend")
+)]
+
 //! Cross-platform sandboxing for commands run on behalf of the agent.
 //!
 //! The public API is intentionally platform-neutral. Internally, macOS uses
@@ -1131,7 +1136,7 @@ fn map_anyhow_error(error: anyhow::Error) -> SandboxError {
     SandboxError::Other(format!("{error:#}"))
 }
 
-#[cfg(all(test, not(target_os = "windows")))]
+#[cfg(all(test, not(any(target_os = "windows", target_os = "illumos"))))]
 mod tests {
     use super::*;
 
