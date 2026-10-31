@@ -497,6 +497,27 @@ async fn test_realfs_atomic_write(executor: BackgroundExecutor) {
     assert_eq!(content, "World");
 }
 
+#[cfg(target_os = "illumos")]
+#[gpui::test]
+async fn test_realfs_handle_follows_renames(executor: BackgroundExecutor) {
+    let fs: Arc<dyn Fs> = RealFs::new(None, executor);
+    // Not under /tmp: tmpfs doesn't update /proc/self/path on rename.
+    let temp_dir = TempDir::new_in(env!("CARGO_TARGET_TMPDIR")).unwrap();
+    let root = std::fs::canonicalize(temp_dir.path()).unwrap();
+    let original = root.join("original.txt");
+    let renamed = root.join("renamed.txt");
+    std::fs::write(&original, "Hello").unwrap();
+
+    let handle = fs.open_handle(&original).await.unwrap();
+    assert_eq!(handle.current_path(&fs).unwrap(), original);
+
+    std::fs::rename(&original, &renamed).unwrap();
+    assert_eq!(handle.current_path(&fs).unwrap(), renamed);
+
+    std::fs::remove_file(&renamed).unwrap();
+    assert!(handle.current_path(&fs).is_err());
+}
+
 #[gpui::test]
 async fn test_realfs_atomic_write_non_existing_file(executor: BackgroundExecutor) {
     let fs = RealFs::new(None, executor);
