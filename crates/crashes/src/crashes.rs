@@ -1,5 +1,12 @@
+#![cfg_attr(
+    target_os = "illumos",
+    allow(unused, reason = "crash-handler and minidumper don't support illumos")
+)]
+
+#[cfg(not(target_os = "illumos"))]
 use crash_handler::{CrashEventResult, CrashHandler};
 use log::info;
+#[cfg(not(target_os = "illumos"))]
 use minidumper::{LoopAction, MinidumpBinary, Server, SocketName};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
@@ -22,7 +29,18 @@ use std::{
     time::Duration,
 };
 
+#[cfg(not(target_os = "illumos"))]
 pub use minidumper::Client;
+
+#[cfg(target_os = "illumos")]
+pub struct Client;
+
+#[cfg(target_os = "illumos")]
+impl Client {
+    fn send_message(&self, _kind: u32, _buffer: Vec<u8>) -> io::Result<()> {
+        Ok(())
+    }
+}
 
 const CRASH_HANDLER_PING_TIMEOUT: Duration = Duration::from_secs(60);
 const CRASH_HANDLER_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
@@ -57,12 +75,16 @@ where
     S: FnOnce(Pin<Box<dyn Future<Output = ()> + Send + 'static>>),
     P: FnOnce(u32) -> PathBuf,
 {
-    connect_and_keepalive(crash_init, socket_path, wait_timer, spawn)
+    std::cfg_select! {
+        target_os = "illumos" => { std::future::ready(Arc::new(Client)) }
+        _ => { connect_and_keepalive(crash_init, socket_path, wait_timer, spawn) }
+    }
 }
 
 /// Spawn the crash-handler subprocess, connect the IPC client, and run the
 /// keepalive ping loop. This is the future returned by [`init`], so it runs on
 /// whichever executor the caller polls it with.
+#[cfg(not(target_os = "illumos"))]
 async fn connect_and_keepalive<F, C, S, P>(
     crash_init: InitCrashHandler,
     socket_path: P,
@@ -420,6 +442,7 @@ fn read_process_memory(pid: u32, address: u64, len: usize) -> Option<Vec<u8>> {
     Some(buffer)
 }
 
+#[cfg(not(target_os = "illumos"))]
 impl minidumper::ServerHandler for CrashServer {
     fn create_minidump_file(&self) -> Result<(File, PathBuf), io::Error> {
         let dump_path = self
@@ -701,6 +724,10 @@ fn spawn_crash_handler(exe: &Path, socket_name: &Path) {
     }
 }
 
+#[cfg(target_os = "illumos")]
+pub fn crash_server(_socket: &Path, _logs_dir: PathBuf) {}
+
+#[cfg(not(target_os = "illumos"))]
 pub fn crash_server(socket: &Path, logs_dir: PathBuf) {
     let Ok(mut server) = Server::with_name(SocketName::Path(socket)) else {
         log::info!("Couldn't create socket, there may already be a running crash server");
@@ -749,6 +776,7 @@ mod tests {
     /// Clearing a tag has to remove it rather than record an empty value,
     /// because that is how an application withdraws identifying state from
     /// crashes it has not produced yet.
+    #[cfg(not(target_os = "illumos"))]
     #[test]
     fn setting_tags_updates_and_removes_values() {
         let server = test_crash_server();
@@ -906,6 +934,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(target_os = "illumos"))]
     impl CrashServer {
         fn receive(&self, message: CrashServerMessage) {
             use minidumper::ServerHandler as _;
