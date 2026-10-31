@@ -239,7 +239,8 @@ Error: Running Zed as root or via sudo is unsupported.
 /// Raises the soft limit on open file descriptors without changing the hard limit.
 ///
 /// Call during startup, before spawning children that will inherit the limit.
-#[cfg(unix)]
+// nix has no `sys::resource` on illumos, and only the GUI app, which isn't built there, calls this.
+#[cfg(all(unix, not(target_os = "illumos")))]
 pub fn increase_open_file_limit() -> Result<()> {
     use anyhow::Context as _;
     use nix::sys::resource::{Resource::RLIMIT_NOFILE, getrlimit, setrlimit};
