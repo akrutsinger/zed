@@ -299,6 +299,14 @@ impl LspAdapter for VtslsLspAdapter {
             }
         });
 
+        // tsserver exits with "unsupported platform 'sunos'" when type acquisition is on, and
+        // vtsls restarts it until it gives up, so it can't be left to the user's settings.
+        // Remove this once vtsls bundles a TypeScript whose tsserver accepts `sunos`.
+        if cfg!(target_os = "illumos") {
+            default_workspace_configuration["typescript"]["disableAutomaticTypeAcquisition"] =
+                true.into();
+        }
+
         let override_options = cx.update(|cx| {
             language_server_settings(delegate.as_ref(), &SERVER_NAME, cx)
                 .and_then(|s| s.settings.clone())
