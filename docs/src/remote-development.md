@@ -50,7 +50,7 @@ PATH=/usr/gnu/bin:/opt/ooce/bin:$PATH cargo build --release --package remote_ser
 
 Building needs GCC, Clang, CMake, `protoc`, `pkg-config` and the GNU userland. The server needs `libgcc_s` at runtime.
 
-Zed can't download Node.js or language servers for illumos, so install them on the host's `PATH`. File changes are detected by polling, which `ZED_FILE_WATCHER_POLL_MS` adjusts (2000 by default). Old servers in `~/.zed_server` are not removed automatically, and no crash reports are collected.
+Zed can't download Node.js or language servers for illumos, so install them on the host's `PATH`. Some extensions stop before checking `PATH`; for those, set `lsp.<server>.binary.path` and its `arguments` in your settings. File changes are detected by polling, which `ZED_FILE_WATCHER_POLL_MS` adjusts (2000 by default). Old servers in `~/.zed_server` are not removed automatically, and no crash reports are collected.
 
 ## Configuration
 

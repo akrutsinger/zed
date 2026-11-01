@@ -875,6 +875,12 @@ impl platform::Host for WasmState {
                 "macos" => platform::Os::Mac,
                 "linux" => platform::Os::Linux,
                 "windows" => platform::Os::Windows,
+                "illumos" => {
+                    return Err(wasmtime::Error::msg(
+                        "the extension API can't represent illumos; \
+                        set `lsp.<server>.binary.path` to a server installed on this host",
+                    ));
+                }
                 _ => return Err(wasmtime::Error::msg("unsupported os")),
             },
             match env::consts::ARCH {
